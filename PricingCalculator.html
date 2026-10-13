@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Pricing Calculator · The Solo Landscaper</title>
+<meta name="description" content="Price the job you're actually doing: on-site hours, debris loads, drive time to the dump, and fees. See what you'd really clear per hour.">
+<style>
+  :root {
+    --bg: #f6f4ee;
+    --card: #ffffff;
+    --ink: #1d2318;
+    --muted: #5c6455;
+    --line: #dcd8cc;
+    --accent: #2f6b2a;
+    --accent-ink: #ffffff;
+    --red: #c0281f;
+    --red-bg: #fdecea;
+    --green: #1f7a32;
+    --green-bg: #e8f5ea;
+    --field: #fbfaf6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141712;
+      --card: #1d211a;
+      --ink: #eef0ea;
+      --muted: #a3ab9b;
+      --line: #343a2f;
+      --accent: #6fb565;
+      --accent-ink: #10140e;
+      --red: #ff6b5e;
+      --red-bg: #3a1a17;
+      --green: #6fd07f;
+      --green-bg: #17301c;
+      --field: #171a14;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  .brand { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+  h1 { font-size: 28px; line-height: 1.15; margin: 0 0 12px; }
+  .intro { color: var(--muted); margin: 0 0 24px; }
+  .intro strong { color: var(--ink); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .full { grid-column: 1 / -1; }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .hint { display: block; font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .field { position: relative; }
+  .field .pre, .field .suf { position: absolute; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
+  .field .pre { left: 12px; }
+  .field .suf { right: 12px; }
+  input, select {
+    width: 100%; font: inherit; font-size: 17px; color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 10px;
+    padding: 11px 12px; min-height: 46px;
+  }
+  .field.has-pre input { padding-left: 26px; }
+  .field.has-suf input { padding-right: 52px; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .perload {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    background: var(--field); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 14px;
+  }
+  .perload .big { font-size: 26px; font-weight: 800; }
+  .perload .sub { font-size: 12.5px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 12px; }
+  td small { display: block; color: var(--muted); font-size: 12.5px; }
+  tr.total td { border-bottom: 0; font-size: 20px; font-weight: 800; padding-top: 12px; }
+  .note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+  .verdict { border-radius: 12px; padding: 16px; margin-top: 14px; display: none; }
+  .verdict.show { display: block; }
+  .verdict.red { background: var(--red-bg); color: var(--red); }
+  .verdict.green { background: var(--green-bg); color: var(--green); }
+  .verdict .rate { font-size: 34px; font-weight: 800; line-height: 1.1; }
+  .verdict .tag { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .08em; padding: 2px 8px; border-radius: 99px; border: 1.5px solid currentColor; margin-bottom: 6px; }
+  .verdict p { margin: 6px 0 0; font-size: 14.5px; }
+  .floorline { font-style: italic; color: var(--muted); font-size: 14px; margin: 12px 0 0; }
+  .linkbtn { background: none; border: 0; padding: 0; font: inherit; font-size: 14px; color: var(--accent); text-decoration: underline; cursor: pointer; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: inherit; font-weight: 700; font-size: 16px; min-height: 46px; padding: 10px 18px;
+    background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; cursor: pointer; width: 100%;
+  }
+  .btn.secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+  .copybox { display: none; margin-top: 10px; }
+  .copybox.show { display: block; }
+  .copytext { width: 100%; font: 14px/1.4 ui-monospace, Menlo, Consolas, monospace; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); color: var(--ink); resize: none; }
+  .share { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-size: 14px; }
+  .share input { width: 20px; height: 20px; min-height: 0; accent-color: var(--accent); }
+  .share label { margin: 0; font-weight: 500; }
+  .toast { font-size: 13px; color: var(--green); min-height: 18px; margin-top: 6px; }
+  #signup { display: none; }
+  #signup.show { display: block; }
+  footer { text-align: center; font-size: 13px; color: var(--muted); margin-top: 28px; }
+  footer a { color: var(--accent); }
+  @media (max-width: 420px) {
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 24px; }
+  }
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff; color: #000; }
+    .card { border-color: #bbb; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <p class="brand">The Solo Landscaper</p>
+  <h1>Price the job you're actually doing.</h1>
+  <p class="intro">I quoted a fall cleanup at <strong>$220</strong>. I cleared <strong>$30/hr</strong>. I priced the leaves I could see, not the loads they'd fill. Here's the tool I built so it doesn't happen again.</p>
+
+  <section class="card" aria-labelledby="h-job">
+    <h2 id="h-job">The job</h2>
+    <div class="grid">
+      <div class="full">
+        <label for="service">Service</label>
+        <select id="service">
+          <option value="cleanup">Fall cleanup / mulch</option>
+          <option value="mowing">Mowing</option>
+          <option value="hardscape">Hardscape</option>
+        </select>
+      </div>
+      <div>
+        <label for="rate">Your hourly floor</label>
+        <div class="field has-pre has-suf"><span class="pre">$</span><input id="rate" type="number" inputmode="decimal" min="0" step="1" value="60"><span class="suf">/hr</span></div>
+        <span class="hint">The least you'll leave the house for.</span>
+      </div>
+      <div>
+        <label for="hours">On-site hours</label>
+        <div class="field has-suf"><input id="hours" type="number" inputmode="decimal" min="0" step="0.25" value="4.5"><span class="suf">hrs</span></div>
+        <span class="hint">Time in the yard only. Don't count the drives.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-haul">
+    <h2 id="h-haul">Hauling debris</h2>
+    <div class="grid">
+      <div>
+        <label for="loads">Number of loads</label>
+        <div class="field"><input id="loads" type="number" inputmode="numeric" min="0" step="1" value="2"></div>
+        <span class="hint">Heavy leaves on 1/3 acre? Plan for 2.</span>
+      </div>
+      <div>
+        <label for="rt">Round trip per load</label>
+        <div class="field has-suf"><input id="rt" type="number" inputmode="numeric" min="0" step="5" value="50"><span class="suf">min</span></div>
+        <span class="hint">Yard → dump → back.</span>
+      </div>
+      <div>
+        <label for="dump">Dump fee per load</label>
+        <div class="field has-pre"><span class="pre">$</span><input id="dump" type="number" inputmode="decimal" min="0" step="1" value="11"></div>
+      </div>
+      <div>
+        <label for="fuel">Fuel per load <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <div class="field has-pre"><span class="pre">$</span><input id="fuel" type="number" inputmode="decimal" min="0" step="1" value="0"></div>
+      </div>
+    </div>
+    <div class="perload" aria-live="polite">
+      <div>
+        <div class="sub">Each load really costs you</div>
+        <div class="sub" id="perloadParts"></div>
+      </div>
+      <div class="big" id="perload">$0</div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-price">
+    <h2 id="h-price">What to charge</h2>
+    <table>
+      <tbody>
+        <tr><td>Labor<small id="laborNote"></small></td><td class="num" id="labor">$0</td></tr>
+        <tr><td>Haul time<small id="haulNote"></small></td><td class="num" id="haul">$0</td></tr>
+        <tr><td>Fees &amp; fuel<small id="feesNote"></small></td><td class="num" id="fees">$0</td></tr>
+        <tr class="total"><td>Price at your floor</td><td class="num" id="total">$0</td></tr>
+      </tbody>
+    </table>
+    <p class="note" id="timeNote"></p>
+  </section>
+
+  <section class="card" aria-labelledby="h-check">
+    <h2 id="h-check">Check a price you quoted</h2>
+    <label for="quote">Price you quoted <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+    <div class="field has-pre"><span class="pre">$</span><input id="quote" type="number" inputmode="decimal" min="0" step="1" placeholder="e.g. 220"></div>
+    <span class="hint"><button type="button" class="linkbtn" id="tryMine">Try my $220 quote</button></span>
+
+    <div class="verdict" id="verdict" aria-live="polite">
+      <span class="tag" id="vTag">RED</span>
+      <div class="rate" id="vRate">$0/hr</div>
+      <p id="vText"></p>
+    </div>
+    <p class="floorline">"My floor is $60/hr or I don't leave the house." — Dave</p>
+
+    <div class="no-print" id="copyArea" style="display:none">
+      <div class="share">
+        <input type="checkbox" id="shareOk" checked>
+        <label for="shareOk">OK to share my result anonymously in the newsletter</label>
+      </div>
+      <button type="button" class="btn secondary" id="copyBtn">Copy my result</button>
+      <div class="toast" id="toast" role="status"></div>
+      <div class="copybox" id="copyBox">
+        <textarea class="copytext" id="copyText" rows="3" readonly></textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="card no-print" id="signup" aria-labelledby="h-signup">
+    <h2 id="h-signup">Get one of these every week</h2>
+    <p style="margin:0 0 12px">Real numbers from a solo op, every week. Free.</p>
+    <a class="btn" id="signupLink" href="#">Subscribe to The Solo Landscaper</a>
+  </section>
+
+  <div class="no-print" style="text-align:center">
+    <button type="button" class="linkbtn" onclick="window.print()">Print or save as PDF</button>
+  </div>
+
+  <footer>
+    Built by Dave, Solo Op · <a id="footerLink" href="#">The Solo Landscaper</a>
+  </footer>
+</main>
+
+<script>
+(function () {
+  // ===== Settings Dave can change =====
+  // Paste your beehiiv subscribe page URL between the quotes to show the signup box.
+  // The page adds ?utm_source=<src> and ?service=<service> to it automatically.
+  var SIGNUP_URL = "";
+  // ====================================
+
+  var $ = function (id) { return document.getElementById(id); };
+  var ids = ["service", "rate", "hours", "loads", "rt", "dump", "fuel", "quote"];
+
+  // Where the visitor came from (?src=etsy, ?src=oct27-body, etc.)
+  var src = "direct";
+  try {
+    var p = new URLSearchParams(window.location.search);
+    if (p.get("src")) src = p.get("src").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "direct";
+  } catch (e) {}
+
+  function num(id) {
+    var v = parseFloat($(id).value);
+    return isFinite(v) && v > 0 ? v : 0;
+  }
+  function money(n) {
+    return "$" + Math.round(n).toLocaleString("en-US");
+  }
+  function hrs(n) {
+    var r = Math.round(n * 10) / 10;
+    return (r % 1 === 0 ? r.toFixed(0) : r.toFixed(1));
+  }
+
+  var lastResult = null;
+
+  function calc() {
+    var rate = num("rate");
+    var hours = num("hours");
+    var loads = Math.round(num("loads"));
+    var rt = num("rt");
+    var dump = num("dump");
+    var fuel = num("fuel");
+    var quote = num("quote");
+
+    var tripHrs = rt / 60;
+    var perLoad = dump + tripHrs * rate + fuel;
+    var labor = hours * rate;
+    var haul = loads * tripHrs * rate;
+    var fees = loads * (dump + fuel);
+    var total = labor + haul + fees;
+    var totalHrs = hours + loads * tripHrs;
+
+    $("perload").textContent = money(perLoad);
+    var parts = [money(dump) + " dump", rt + " min of your time (" + money(tripHrs * rate) + ")"];
+    if (fuel > 0) parts.push(money(fuel) + " fuel");
+    $("perloadParts").textContent = parts.join(" + ");
+
+    $("labor").textContent = money(labor);
+    $("laborNote").textContent = hrs(hours) + " hrs × " + money(rate);
+    $("haul").textContent = money(haul);
+    $("haulNote").textContent = loads + (loads === 1 ? " trip" : " trips") + " × " + rt + " min × " + money(rate) + "/hr";
+    $("fees").textContent = money(fees);
+    $("feesNote").textContent = loads + " × (" + money(dump) + " dump" + (fuel > 0 ? " + " + money(fuel) + " fuel" : "") + ")";
+    $("total").textContent = money(total);
+    $("timeNote").textContent = "Total time on this job: " + hrs(totalHrs) + " hrs, not " + hrs(hours) + ".";
+    $("timeNote").style.display = loads > 0 && rt > 0 ? "" : "none";
+
+    var v = $("verdict");
+    if (quote > 0 && totalHrs > 0) {
+      var cleared = (quote - fees) / totalHrs;
+      var red = cleared < rate;
+      v.className = "verdict show " + (red ? "red" : "green");
+      $("vTag").textContent = red ? "RED" : "GREEN";
+      $("vRate").textContent = money(cleared) + "/hr";
+      var gap = total - quote;
+      $("vText").textContent = red
+        ? "That's " + money(rate - cleared) + "/hr under your " + money(rate) + " floor. At your floor this job is " + money(total) + ", so you're " + money(gap) + " light."
+        : "At or above your " + money(rate) + " floor. Your quote covers the drives and the dump.";
+      $("copyArea").style.display = "";
+      lastResult = {
+        word: red ? "RED" : "GREEN",
+        quote: quote, loads: loads, hours: hours, cleared: cleared
+      };
+    } else {
+      v.className = "verdict";
+      $("copyArea").style.display = "none";
+      lastResult = null;
+    }
+    $("copyBox").className = "copybox";
+    updateSignup();
+  }
+
+  function resultLine() {
+    if (!lastResult) return "";
+    return lastResult.word +
+      " | Quoted " + money(lastResult.quote) +
+      " | " + lastResult.loads + (lastResult.loads === 1 ? " load" : " loads") +
+      " | " + hrs(lastResult.hours) + " hrs on-site" +
+      " | cleared " + money(lastResult.cleared) + "/hr" +
+      " | share anonymously: " + ($("shareOk").checked ? "Y" : "N");
+  }
+
+  function showFallback(text) {
+    var box = $("copyBox");
+    $("copyText").value = text;
+    box.className = "copybox show";
+    $("copyText").focus();
+    $("copyText").select();
+    $("toast").textContent = "Select the text above and copy it.";
+  }
+
+  $("copyBtn").addEventListener("click", function () {
+    var text = resultLine();
+    if (!text) return;
+    $("toast").textContent = "";
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () {
+        $("toast").textContent = "Copied. Paste it in a reply to the newsletter.";
+        $("copyText").value = text;
+        $("copyBox").className = "copybox show";
+      }, function () { showFallback(text); });
+    } else {
+      showFallback(text);
+    }
+  });
+
+  $("tryMine").addEventListener("click", function () {
+    $("service").value = "cleanup";
+    $("rate").value = 60; $("hours").value = 4.5; $("loads").value = 2;
+    $("rt").value = 50; $("dump").value = 11; $("fuel").value = 0;
+    $("quote").value = 220;
+    calc();
+    $("verdict").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  function updateSignup() {
+    var base = SIGNUP_URL.trim();
+    if (!base) { $("signup").className = "card no-print"; return; }
+    var sep = base.indexOf("?") === -1 ? "?" : "&";
+    var url = base + sep + "utm_source=" + encodeURIComponent(src) +
+      "&utm_medium=calculator&service=" + encodeURIComponent($("service").value);
+    $("signupLink").href = url;
+    $("footerLink").href = url;
+    $("signup").className = "card no-print show";
+  }
+
+  ids.forEach(function (id) {
+    $(id).addEventListener("input", calc);
+    $(id).addEventListener("change", calc);
+  });
+  $("shareOk").addEventListener("change", function () {
+    if ($("copyBox").className.indexOf("show") !== -1) $("copyText").value = resultLine();
+  });
+
+  calc();
+})();
+</script>
+</body>
+</html>
